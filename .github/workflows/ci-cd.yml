@@ -39,9 +39,14 @@ jobs:
           ${{ env.ACR_NAME }}.azurecr.io/2bcloud-app:${{ github.sha }}
 
     - name: Install kubectl
-      uses: azure/k8s-set-context@v3
+      uses: azure/setup-kubectl@v3
+      
+    - name: Get Kubernetes context
+      uses: azure/aks-set-context@v3
       with:
-        kubeconfig: ${{ secrets.KUBE_CONFIG }}
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        cluster-name: ${{ env.CLUSTER_NAME }}
+        admin: true
 
     - name: Deploy to Kubernetes
       run: |
@@ -50,6 +55,7 @@ jobs:
         
         # Apply Kubernetes manifests
         kubectl apply -f kubernetes/deployment.yaml
+        kubectl apply -f kubernetes/hpa.yaml
         
         # Check deployment status
         kubectl rollout status deployment/2bcloud-app

@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:  # This enables manual trigger from the GitHub UI
 
 env:
   ACR_NAME: rbtacr
@@ -50,14 +51,14 @@ jobs:
 
     - name: Get Kube Config
       run: |
-        az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --file $GITHUB_WORKSPACE/kubeconfig
-        echo "KUBE_CONFIG=$(cat $GITHUB_WORKSPACE/kubeconfig | base64 -w 0)" >> $GITHUB_ENV
-
+        az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --file kubeconfig
+        cat kubeconfig
+        
     - name: Set up kubectl
       uses: azure/k8s-set-context@v3
       with:
         method: kubeconfig
-        kubeconfig: ${{ env.KUBE_CONFIG }}
+        kubeconfig: ${{ github.workspace }}/kubeconfig
 
     - name: Deploy to Kubernetes
       run: |

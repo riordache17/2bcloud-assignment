@@ -60,18 +60,24 @@ jobs:
     - name: Get Kube Config
       run: |
         # Get kubeconfig with admin credentials
-        az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --admin --file kubeconfig
+        az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --admin --file kubeconfig --overwrite-existing
         
         # Set KUBECONFIG environment variable
-        echo "KUBECONFIG=$GITHUB_WORKSPACE/kubeconfig" >> $GITHUB_ENV
+        export KUBECONFIG=$GITHUB_WORKSPACE/kubeconfig
+        echo "KUBECONFIG=$KUBECONFIG" >> $GITHUB_ENV
+        
+        # Set the context
+        kubectl config use-context "${{ env.CLUSTER_NAME }}-admin"
         
         # Verify kubectl can connect
-        kubectl get nodes
+        kubectl config current-context
+        kubectl cluster-info
         
     - name: Deploy Kubernetes manifests
       run: |
         # Make sure kubectl is using the correct config
         export KUBECONFIG=$GITHUB_WORKSPACE/kubeconfig
+        kubectl config use-context "${{ env.CLUSTER_NAME }}-admin"
         
         # Apply Kubernetes manifests
         kubectl apply -f kubernetes/deployment.yaml

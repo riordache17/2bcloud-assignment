@@ -96,8 +96,20 @@ jobs:
         kubectl wait --for=condition=ready pod -l app=2bcloud-app --timeout=300s
         
         # Get service URL
-        echo "Application URL: http://$(kubectl get service 2bcloud-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-        echo "Application deployed at: http://$(kubectl get service 2bcloud-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+        echo "Waiting for LoadBalancer IP to be assigned..."
+        kubectl get svc rbt-app-service -w
+        
+        # Get service details
+        SERVICE_IP=$(kubectl get service rbt-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}' --ignore-not-found)
+        if [ -z "$SERVICE_IP" ]; then
+          echo "Error: Could not get service IP. Service details:"
+          kubectl describe svc rbt-app-service
+          exit 1
+        fi
+        
+        echo "Application URL: http://$SERVICE_IP"
+        echo "Application deployed at: http://$SERVICE_IP"
         
         # Run smoke test
-        curl -sSf http://$(kubectl get service 2bcloud-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')/healthz
+        echo "Running smoke test..."
+        curl -v http://$SERVICE_IP/healthz

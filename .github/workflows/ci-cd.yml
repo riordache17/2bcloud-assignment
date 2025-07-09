@@ -48,41 +48,50 @@ jobs:
         tags: |
           ${{ env.ACR_NAME }}.azurecr.io/2bcloud-app:latest
           ${{ env.ACR_NAME }}.azurecr.io/2bcloud-app:${{ github.sha }}
+    
+    - name: Update image in deployment
+      run: |
+        # Replace the image tag in deployment.yaml
+        sed -i "s|\${{ env.ACR_NAME }}.azurecr.io/2bcloud-app:latest|${{ env.ACR_NAME }}.azurecr.io/2bcloud-app:${{ github.sha }}|g" kubernetes/deployment.yaml
+        
+        # Verify the replacement
+        cat kubernetes/deployment.yaml | grep "image:"
 
     - name: Get Kube Config
       run: |
-        az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --file kubeconfig
-        cat kubeconfig
+        # Get kubeconfig with admin credentials
+        az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --admin --file kubeconfig
         
-    - name: Set up kubectl
-      uses: azure/k8s-set-context@v3
-      with:
-        method: kubeconfig
-        kubeconfig: ${{ github.workspace }}/kubeconfig
-
-    - name: Deploy to Kubernetes
+        # Set KUBECONFIG environment variable
+        echo "KUBECONFIG=$GITHUB_WORKSPACE/kubeconfig" >> $GITHUB_ENV
+        
+        # Verify kubectl can connect
+        kubectl get nodes
+        
+    - name: Deploy Kubernetes manifests
       run: |
-        # Replace placeholders in deployment.yaml
-        sed -i "s|\${{ secrets.ACR_NAME }}.azurecr.io/2bcloud-app:latest|${{ env.ACR_NAME }}.azurecr.io/2bcloud-app:${{ github.sha }}|g" kubernetes/deployment.yaml
+        # Make sure kubectl is using the correct config
+        export KUBECONFIG=$GITHUB_WORKSPACE/kubeconfig
         
         # Apply Kubernetes manifests
         kubectl apply -f kubernetes/deployment.yaml
         kubectl apply -f kubernetes/hpa.yaml
         
-        # Check deployment status
-        kubectl rollout status deployment/2bcloud-app
-        
-        # Get service URL
-        kubectl get service 2bcloud-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-      
+        # Verify deployment
+        kubectl get pods -n default
+        kubectl get svc -n default
+
     - name: Verify deployment
       run: |
+        # Make sure kubectl is using the correct config
+        export KUBECONFIG=$GITHUB_WORKSPACE/kubeconfig
+        
         # Wait for pods to be ready
         kubectl wait --for=condition=ready pod -l app=2bcloud-app --timeout=300s
         
         # Get service URL
-        SERVICE_IP=$(kubectl get service 2bcloud-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-        echo "Application deployed at: http://$SERVICE_IP"
+        echo "Application URL: http://$(kubectl get service 2bcloud-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+        echo "Application deployed at: http://$(kubectl get service 2bcloud-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
         
         # Run smoke test
-        curl -sSf http://$SERVICE_IP/healthz
+        curl -sSf http://$(kubectl get service 2bcloud-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')/healthz

@@ -1,4 +1,4 @@
-# Use an official Python runtime as a parent image
+# Base image
 FROM python:3.9-slim
 
 # Install system dependencies
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements
 COPY requirements.txt .
 
 # Install any needed packages specified in requirements.txt
@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Make port 5000 available to the world outside this container
+# Make port 5000 available
 EXPOSE 5000
 
 # Define environment variable

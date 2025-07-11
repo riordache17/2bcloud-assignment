@@ -83,7 +83,9 @@ export KUBECONFIG=kubeconfig
 
 ## Application Deployment
 
-### Option 1: Manual Deployment
+## Application Deployment
+
+### Manual Deployment
 
 1. **Build and Push Docker Image**
 
@@ -111,16 +113,6 @@ kubectl get svc
 kubectl get hpa
 ```
 
-### Option 2: Using Deployment Script
-
-```bash
-# Make the script executable
-chmod +x scripts/deploy-hpa.sh
-
-# Run the deployment
-./scripts/deploy-hpa.sh
-```
-
 ## CI/CD Pipeline
 
 The GitHub Actions workflow (`.github/workflows/ci-cd.yml`) automates the following:
@@ -136,51 +128,39 @@ The GitHub Actions workflow (`.github/workflows/ci-cd.yml`) automates the follow
 
 1. **Fork this repository** to your GitHub account
 
-2. **Configure GitHub Secrets**:
+2. **Create Azure Service Principal** with Contributor access to your AKS cluster:
+   ```bash
+   az ad sp create-for-rbac --name "2bcloud-aks-sp" --role contributor \
+     --scopes /subscriptions/<subscription-id>/resourceGroups/<resource-group> \
+     --sdk-auth
+   ```
+
+3. **Configure GitHub Secrets**:
+   - `AZURE_CREDENTIALS`: The JSON output from the service principal creation
    - `ACR_NAME`: Your ACR name (e.g., 'rbtacr')
    - `ACR_USERNAME`: ACR admin username (from Azure Portal -> ACR -> Access Keys)
    - `ACR_PASSWORD`: ACR admin password
-   - `KUBE_CONFIG`: Base64-encoded kubeconfig (generate using `scripts/generate-kubeconfig.sh`)
 
-3. **Push to main branch** to trigger the workflow
+4. **Push to main branch** to trigger the workflow
 
-## Installation and Usage
+## Testing HPA
 
-### 1. Clone the repository
+To test the Horizontal Pod Autoscaler, you can generate load on the application:
+
 ```bash
-git clone <repository-url>
-cd 2bcloud-assignment
-```
+# Get the service IP
+SERVICE_IP=$(kubectl get svc rbt-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
-### 2. Initialize Terraform
-```bash
-terraform init
-```
+# Install Apache Bench if needed
+# For Ubuntu/Debian: sudo apt-get install apache2-utils
+# For macOS: brew install apache2-utils
 
-### 3. Review the execution plan
-```bash
-terraform plan
-```
+# Generate load
+ab -n 100000 -c 50 http://$SERVICE_IP/stress/100
 
-### 4. Apply the configuration
-```bash
-terraform apply
+# Monitor HPA in another terminal
+watch -n 5 'kubectl get hpa 2bcloud-app-hpa && echo "" && kubectl get pods'
 ```
-
-### 5. Configure kubectl
-After the infrastructure is created, configure kubectl to connect to your AKS cluster:
-```bash
-export KUBECONFIG=$(pwd)/kubeconfig
-kubectl get nodes
-```
-
-### 6. Verify the cluster is running
-```bash
-kubectl get all --all-namespaces
-```
-
-## Usage
-*Usage instructions will be added here*
 
 ## Project Structure
 
@@ -194,10 +174,7 @@ kubectl get all --all-namespaces
 ├── kubernetes/          # Kubernetes manifests
 │   ├── deployment.yaml  # Application deployment
 │   └── hpa.yaml         # Horizontal Pod Autoscaler config
-├── scripts/             # Utility scripts
-│   ├── deploy-hpa.sh    # Deployment script
-│   ├── generate-kubeconfig.sh  # Kubeconfig generator
-│   └── test-hpa.sh      # HPA testing script
+├── scripts/             # (Optional) Utility scripts for testing and maintenance
 ├── .gitignore          # Git ignore file
 ├── README.md           # This file
 ├── backend.tf          # Terraform backend config

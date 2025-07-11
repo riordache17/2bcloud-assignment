@@ -15,18 +15,6 @@ output "cluster_kubernetes_version" {
   value       = azurerm_kubernetes_cluster.main.kubernetes_version
 }
 
-output "kube_config" {
-  description = "The Kubernetes configuration to connect to the cluster"
-  value       = azurerm_kubernetes_cluster.main.kube_config_raw
-  sensitive   = true
-}
-
-output "host" {
-  description = "The Kubernetes cluster server host"
-  value       = azurerm_kubernetes_cluster.main.kube_config.0.host
-  sensitive   = true
-}
-
 # Storage Account
 output "storage_account_name" {
   description = "The name of the storage account for Terraform state"
@@ -62,27 +50,4 @@ output "how_to__push_to_acr" {
      docker push ${azurerm_container_registry.acr.login_server}/2bcloud-app:latest
   EOT
   description = "Instructions for pushing Docker images to ACR"
-}
-
-# Output the kubeconfig filename for convenience
-output "kubeconfig_filename" {
-  value       = local_file.kubeconfig.filename
-  description = "The filename of the generated kubeconfig file"
-}
-
-output "how_to__use_kubectl" {
-  description = "Instructions for using kubectl with the new cluster"
-  value       = <<EOT
-
-  To use kubectl with the new cluster, run:
-  
-  1. Set the KUBECONFIG environment variable:
-     export KUBECONFIG=${local_file.kubeconfig.filename}
-  
-  2. Verify cluster connection:
-     kubectl get nodes
-  
-  Or use the kubeconfig file directly:
-  kubectl --kubeconfig=${local_file.kubeconfig.filename} get nodes
-  EOT
 }

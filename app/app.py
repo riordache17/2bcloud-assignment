@@ -1,7 +1,6 @@
 from flask import Flask, jsonify
 import os
 import socket
-import math
 import time
 
 app = Flask(__name__)
@@ -30,7 +29,7 @@ def stress(n):
     return jsonify({
         'result': result,
         'time_taken': end_time - start_time,
-        'hostname': socket.gethostname()  # Will help identify which pod responded
+        'hostname': socket.gethostname() 
     }), 200
 
 if __name__ == '__main__':

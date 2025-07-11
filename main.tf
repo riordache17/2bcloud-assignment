@@ -59,19 +59,3 @@ resource "azurerm_kubernetes_cluster" "main" {
   
   tags = var.tags
 }
-
-# Configure Kubernetes provider to use the created AKS cluster
-provider "kubernetes" {
-  host                   = azurerm_kubernetes_cluster.main.kube_config.0.host
-  client_certificate     = base64decode(azurerm_kubernetes_cluster.main.kube_config.0.client_certificate)
-  client_key             = base64decode(azurerm_kubernetes_cluster.main.kube_config.0.client_key)
-  cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.main.kube_config.0.cluster_ca_certificate)
-}
-
-# Output the kubeconfig
-resource "local_file" "kubeconfig" {
-  filename = "kubeconfig"
-  content  = azurerm_kubernetes_cluster.main.kube_config_raw
-  
-  depends_on = [azurerm_kubernetes_cluster.main]
-}
